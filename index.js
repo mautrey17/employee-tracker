@@ -1,7 +1,7 @@
 const inquirer = require("inquirer");
 const mysql = require("mysql");
 
-const conn = mysql.createConnection({
+const connection = mysql.createConnection({
   host: "localhost",
   port: 3306,
   user: "root",
@@ -9,12 +9,47 @@ const conn = mysql.createConnection({
   database: "employee_trackerdb",
 });
 
+function viewEmployee() {
+    const currentEmployeeArr = [];
+    connection.query('select id, first_name, last_name from employee', (err, data) => {
+        if (err) throw err;
+
+        data.forEach(employee => {
+            let combineArr = [];
+            let firstName = employee.first_name;
+            let lastName = employee.last_name;
+            combineArr.push(firstName, lastName);
+            currentEmployeeArr.push(combineArr.join(' '))
+        });
+
+        inquirer.prompt({
+            name: 'viewEmp',
+            type: 'list',
+            message: 'Which employee would you like to view?',
+            choices: currentEmployeeArr
+        }).then(response => {
+            let separateNames = response.viewEmp.split(' ');
+            let chosenEmployee = separateNames[1];
+
+            connection.query('select * from employee where last_name = ?', [chosenEmployee], (error, dataFinal) => {
+                if(error)throw error;
+                console.table(dataFinal)
+                menu();
+            })
+        })
+    })
+    
+    // const query = conn.query('select * from employee', (err, data) => {
+        // if (err) throw err;
+
+    // })
+}
 
 function menu() {
     inquirer.prompt({
         type: 'list',
         message: 'What would you like to do?',
-        choices: ['Add an employee', 'Add a department', 'Add a role', 'View departments', 'View roles', 'View employees', 'Update employee roles'],
+        choices: ['Add an employee', 'Add a department', 'Add a role', 'View departments', 'View roles', 'View an employee', 'Update employee roles'],
         name: 'desiredAction'
     }).then(response => {
         switch (response.desiredAction){
@@ -41,12 +76,14 @@ function menu() {
                 break;
             default:
                 console.log('Goodbye!');
-                conn.end();
+                connection.end();
         }
     })
 }
 
-conn.connect((err) => {
+connection.connect((err) => {
   if (err) throw err;
-  console.log(`connect to db as id ${conn.threadId}`);
+  console.log(`connect to db as id ${connection.threadId}`);
 });
+
+menu();

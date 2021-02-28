@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/mautrey17/employee-tracker/issues"
   },
-  "homepage": "https://github.com/mautrey17/employee-tracker#readme"
+  "homepage": "https://github.com/mautrey17/employee-tracker#readme",
+  "dependencies": {
+    "inquirer": "^8.0.0",
+    "mysql": "^2.18.1"
+  }
 }
