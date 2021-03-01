@@ -13,29 +13,36 @@ const connection = mysql.createConnection({
 
 //function to view individual employee
 function viewEmployee() {
-    const currentEmployeeArr = [];
-    connection.query('select id, first_name, last_name from employee', (err, data) => {
+    connection.query('select id, first_name as firstName, last_name as lastName from employee', (err, employees) => {
         if (err) throw err;
-
         //get employees from MySQL, put in array to use in inquirer prompt
-        data.forEach(employee => {
-            let combineArr = [];
-            let firstName = employee.first_name;
-            let lastName = employee.last_name;
-            combineArr.push(firstName, lastName);
-            currentEmployeeArr.push(combineArr.join(' '))
-        });
+
+        const currentEmployees = employees.map(({firstName, lastName}) => `${firstName} ${lastName}`)
+        console.log(currentEmployees);
 
         inquirer.prompt({
             name: 'viewEmp',
             type: 'list',
             message: 'Which employee would you like to view?',
-            choices: currentEmployeeArr
-        }).then(response => {
-            let separateNames = response.viewEmp.split(' ');
-            let chosenEmployee = separateNames[1];
+            choices: currentEmployees
+        }).then(({viewEmp}) => {
+            // let separateNames = viewEmp.split(' ');
+            // let chosenEmployee = separateNames[1];
+            const chosenEmployee = viewEmp.split(' ').pop();
 
-            connection.query('select employee.first_name, employee.last_name, role.title, role.salary, department.dept_name from employee inner join role on employee.role_id = role.id inner join department on role.department_id = department.id where employee.last_name = ?', [chosenEmployee], (error, dataFinal) => {
+            connection.query(
+                `select 
+                    employee.first_name, 
+                    employee.last_name, 
+                    role.title, 
+                    role.salary, 
+                    department.dept_name 
+                from employee 
+                inner join 
+                    role on employee.role_id = role.id 
+                inner join 
+                    department on role.department_id = department.id 
+                where employee.last_name = ?`, [chosenEmployee], (error, dataFinal) => {
                 if(error)throw error;
                 console.table(dataFinal)
                 menu();
