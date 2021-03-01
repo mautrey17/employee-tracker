@@ -1,6 +1,8 @@
+//dependencies
 const inquirer = require("inquirer");
 const mysql = require("mysql");
 
+//establish connection with MySQL
 const connection = mysql.createConnection({
   host: "localhost",
   port: 3306,
@@ -9,11 +11,13 @@ const connection = mysql.createConnection({
   database: "employee_trackerdb",
 });
 
+//function to view individual employee
 function viewEmployee() {
     const currentEmployeeArr = [];
     connection.query('select id, first_name, last_name from employee', (err, data) => {
         if (err) throw err;
 
+        //get employees from MySQL, put in array to use in inquirer prompt
         data.forEach(employee => {
             let combineArr = [];
             let firstName = employee.first_name;
@@ -31,25 +35,50 @@ function viewEmployee() {
             let separateNames = response.viewEmp.split(' ');
             let chosenEmployee = separateNames[1];
 
-            connection.query('select * from employee where last_name = ?', [chosenEmployee], (error, dataFinal) => {
+            connection.query('select employee.first_name, employee.last_name, role.title, role.salary, department.dept_name from employee inner join role on employee.role_id = role.id inner join department on role.department_id = department.id where employee.last_name = ?', [chosenEmployee], (error, dataFinal) => {
                 if(error)throw error;
                 console.table(dataFinal)
                 menu();
             })
         })
     })
-    
-    // const query = conn.query('select * from employee', (err, data) => {
-        // if (err) throw err;
+}
 
-    // })
+//function to view department 
+function viewDepartment() {
+    const currentDepartmentArr = [];
+    connection.query('select dept_name from department', (err, data) => {
+        if (err) throw err;
+
+        //get employees from MySQL, put in array to use in inquirer prompt
+
+        data.forEach(department => {
+            currentDepartmentArr.push(department.dept_name)
+        });
+
+        inquirer.prompt({
+            name: 'viewDept',
+            type: 'list',
+            message: 'Which department would you like to view?',
+            choices: currentDepartmentArr
+        })
+        .then(response => {
+            let chosenDepartment = response.viewDept;
+
+            connection.query('select employee.first_name, employee.last_name, role.title, role.salary, department.dept_name from employee inner join role on employee.role_id = role.id inner join department on role.department_id = department.id where department.dept_name = ?', [chosenDepartment], (error, dataFinal) => {
+                if(error)throw error;
+                console.table(dataFinal)
+                menu();
+            })
+        })
+    })
 }
 
 function menu() {
     inquirer.prompt({
         type: 'list',
         message: 'What would you like to do?',
-        choices: ['Add an employee', 'Add a department', 'Add a role', 'View departments', 'View roles', 'View an employee', 'Update employee roles'],
+        choices: ['Add an employee', 'Add a department', 'Add a role', 'View a department', 'View roles', 'View an employee', 'Update employee roles', 'Quit'],
         name: 'desiredAction'
     }).then(response => {
         switch (response.desiredAction){
