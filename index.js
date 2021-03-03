@@ -200,16 +200,11 @@ function addEmployee() {
                     `insert into employee (first_name, last_name, role_id, manager_id)
                     values (?, ?, ?, ?)`, [newFirstName, newLastName, roleID, managerId], (error, dataFinal) => {
                     if(error)throw error;
-                    console.log(`${newFirstName} ${newLastName} has been added to roles`)
+                    console.log(`${newFirstName} ${newLastName} has been added to employees`)
                     menu();
                 })
             })
-
-
-        })
-        
-
-        
+        })   
     })
 }
 
@@ -291,11 +286,92 @@ function addRole() {
     })
 }
 
+function updateEmployeeRoles(){
+    //Get current roles and other employees
+    connection.query(
+        `select 
+            title as roleTitle, 
+            id as roleId 
+        from role`, (err, roles) => {
+        if (err) throw err;
+
+        //get roles from MySQL, put in array of objects to combine with id
+        const currentRoles = roles.map(({roleTitle, roleId}) => ({
+            role: `${roleTitle}`,
+            value: roleId
+        }))
+        //put roles into in array to use in inquirer prompt
+        const roleChoices = currentRoles.map(({role}) => `${role}`)
+
+        //get employee list information for manager
+        connection.query(`
+        select
+            first_name as firstName, 
+            last_name as lastName, 
+            id as empId
+        from employee`, (err2, emp) => {
+
+            const currentEmployees = emp.map(({firstName, lastName, empId}) => ({
+                name: `${firstName} ${lastName}`,
+                value: empId
+            }))
+            const employeeChoices = currentEmployees.map(({name}) => `${name}`)
+
+            //get necessary information for new role
+            inquirer.prompt([
+                {
+                    name: 'employeeToUpdate',
+                    type: 'list',
+                    message: "Which employee would you like to update?",
+                    choices: employeeChoices
+                },
+                {
+                    name: 'newRole',
+                    type: 'list',
+                    message: 'What is the role of the new employee?',
+                    choices: roleChoices
+                }
+            ]).then(({employeeToUpdate, newRole}) => {
+                let roleID;
+                let indexOfRole;
+                let employeeId;
+                let indexOfEmployee;
+                //get the id of the desired department
+                function findID(){
+                    roleChoices.forEach(entry => {
+                        if(entry === newRole){
+                            indexOfRole = roleChoices.indexOf(entry);
+                            roleID = currentRoles[indexOfRole].value;
+                        }
+                    })
+                    employeeChoices.forEach(entry => {
+                        if(entry === employeeToUpdate){
+                            indexOfEmployee = employeeChoices.indexOf(entry);
+                            employeeId = currentEmployees[indexOfEmployee].value;
+                        }
+                    })
+                }
+                findID();
+
+                //insert into MySQL
+                connection.query(`
+                    update employee 
+                    set role_id = ?
+                    where id = ?`, [roleID, employeeId], (error, dataFinal) => {
+                    if(error)throw error;
+                    console.log(`Employee updated`)
+                    menu();
+                })
+            })
+        })   
+    })
+}
+
 function menu() {
     inquirer.prompt({
         type: 'list',
         message: 'What would you like to do?',
-        choices: ['View an employee', 'View employees by department', 'View employees by role', 'Add an employee', 'Add a department', 'Add a role', 'Update employee roles', 'Quit'],
+        choices: ['View an employee', 'View employees by department', 'View employees by role', 'Add an employee', 'Add a department', 'Add a role', "Update an employee's role", 'Quit'],
         name: 'desiredAction'
     }).then(response => {
         switch (response.desiredAction){
@@ -317,8 +393,8 @@ function menu() {
             case 'Add a role':
                 addRole();
                 break;
-            case 'Add a role':
-                updateEmployeeRole();
+            case "Update an employee's role":
+                updateEmployeeRoles();
                 break;
             default:
                 console.log('Goodbye!');
