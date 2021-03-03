@@ -81,14 +81,125 @@ function viewDepartment() {
     })
 }
 
+function viewRole() {
+    connection.query('select title as roleTitle from role', (err, roles) => {
+        if (err) throw err;
+
+        //get roles from MySQL, put in array to use in inquirer prompt
+        const currentRoles = roles.map(({roleTitle}) => `${roleTitle}`)
+        console.log(currentRoles);
+
+        inquirer.prompt({
+            name: 'viewRole',
+            type: 'list',
+            message: 'Which role would you like to view?',
+            choices: currentRoles
+        }).then(({viewRole}) => {
+            const chosenRole = viewRole;
+
+            connection.query(
+                `select 
+                    employee.first_name, 
+                    employee.last_name, 
+                    role.title, 
+                    role.salary, 
+                    department.dept_name 
+                from employee 
+                inner join 
+                    role on employee.role_id = role.id 
+                inner join 
+                    department on role.department_id = department.id 
+                where role.title = ?`, [chosenRole], (error, dataFinal) => {
+                if(error)throw error;
+                console.table(dataFinal)
+                menu();
+            })
+        })
+    })
+}
+
+function addEmployee() {
+
+}
+
+function addDepartment() {
+
+}
+
+function addRole() {
+    //Get current departments
+    connection.query('select id, dept_name as deptName from department', (err, depts) => {
+        if (err) throw err;
+
+        //get departments from MySQL, put in array of objects to combine with id
+        const currentDepartments = depts.map(({id, deptName}) => ({
+            department: `${deptName}`,
+            value: id
+        }))
+        //put departments into in array to use in inquirer prompt
+        const departmentChoices = currentDepartments.map(({department}) => `${department}`)
+
+        //get necessary information for new role
+        inquirer.prompt([
+            {
+                name: 'newTitle',
+                type: 'input',
+                message: 'What is the new role called?',
+            },
+            {
+                name: 'newSalary',
+                type: 'input',
+                message: 'What is the new salary?',
+            },
+            {
+                name: 'newDept',
+                type: 'list',
+                message: 'What is the department for the new role?',
+                choices: departmentChoices
+            },
+        ]).then(({newTitle, newSalary, newDept}) => {
+            let departmentID;
+            let indexOfDept
+            //get the id of the desired department
+            function findID(){
+                departmentChoices.forEach(entry => {
+                    if(entry === newDept){
+                        indexOfDept = departmentChoices.indexOf(entry);
+                        departmentID = currentDepartments[indexOfDept].value;
+                    }
+                })
+            }
+            findID();
+
+            //insert into MySQL
+            connection.query(
+                `insert into role (title, salary, department_id)
+                values (?, ?, ?)`, [newTitle, newSalary, departmentID], (error, dataFinal) => {
+                if(error)throw error;
+                console.log(`${newTitle} has been added to roles`)
+                menu();
+            })
+        })
+    })
+}
+
 function menu() {
     inquirer.prompt({
         type: 'list',
         message: 'What would you like to do?',
-        choices: ['Add an employee', 'Add a department', 'Add a role', 'View a department', 'View roles', 'View an employee', 'Update employee roles', 'Quit'],
+        choices: ['View an employee', 'View employees by department', 'View employees by role', 'Add an employee', 'Add a department', 'Add a role', 'Update employee roles', 'Quit'],
         name: 'desiredAction'
     }).then(response => {
         switch (response.desiredAction){
+            case 'View an employee':
+                viewEmployee();
+                break;
+            case 'View employees by department':
+                viewDepartment();
+                break;
+            case 'View employees by role':
+                viewRole();
+                break;
             case 'Add an employee':
                 addEmployee();
                 break;
@@ -97,15 +208,6 @@ function menu() {
                 break;
             case 'Add a role':
                 addRole();
-                break;
-            case 'View a department':
-                viewDepartment();
-                break;
-            case 'View an employee':
-                viewEmployee();
-                break;
-            case 'View a role':
-                viewRole();
                 break;
             case 'Add a role':
                 updateEmployeeRole();
