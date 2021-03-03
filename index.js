@@ -119,59 +119,97 @@ function viewRole() {
 }
 
 function addEmployee() {
-    //Get current departments
-    connection.query('select id, dept_name as deptName from department', (err, depts) => {
+    //Get current roles and other employees
+    connection.query(
+        `select 
+            title as roleTitle, 
+            id as roleId 
+        from role`, (err, roles) => {
         if (err) throw err;
 
-        //get departments from MySQL, put in array of objects to combine with id
-        const currentDepartments = depts.map(({id, deptName}) => ({
-            department: `${deptName}`,
-            value: id
+        //get roles from MySQL, put in array of objects to combine with id
+        const currentRoles = roles.map(({roleTitle, roleId}) => ({
+            role: `${roleTitle}`,
+            value: roleId
         }))
-        //put departments into in array to use in inquirer prompt
-        const departmentChoices = currentDepartments.map(({department}) => `${department}`)
+        //put roles into in array to use in inquirer prompt
+        const roleChoices = currentRoles.map(({role}) => `${role}`)
 
-        //get necessary information for new role
-        inquirer.prompt([
-            {
-                name: 'newTitle',
-                type: 'input',
-                message: 'What is the new role called?',
-            },
-            {
-                name: 'newSalary',
-                type: 'input',
-                message: 'What is the new salary?',
-            },
-            {
-                name: 'newDept',
-                type: 'list',
-                message: 'What is the department for the new role?',
-                choices: departmentChoices
-            },
-        ]).then(({newTitle, newSalary, newDept}) => {
-            let departmentID;
-            let indexOfDept
-            //get the id of the desired department
-            function findID(){
-                departmentChoices.forEach(entry => {
-                    if(entry === newDept){
-                        indexOfDept = departmentChoices.indexOf(entry);
-                        departmentID = currentDepartments[indexOfDept].value;
-                    }
+        //get employee list information for manager
+        connection.query(`
+        select
+            first_name as firstName, 
+            last_name as lastName, 
+            id as empId
+        from employee`, (err2, emp) => {
+
+            const currentEmployees = emp.map(({firstName, lastName, empId}) => ({
+                name: `${firstName} ${lastName}`,
+                value: empId
+            }))
+            const employeeChoices = currentEmployees.map(({name}) => `${name}`)
+
+            //get necessary information for new role
+            inquirer.prompt([
+                {
+                    name: 'newFirstName',
+                    type: 'input',
+                    message: "What is the employee's first name?",
+                },
+                {
+                    name: 'newLastName',
+                    type: 'input',
+                    message: "What is the employee's last name?",
+                },
+                {
+                    name: 'newRole',
+                    type: 'list',
+                    message: 'What is the role of the new employee?',
+                    choices: roleChoices
+                },
+                {
+                    name: 'newManager',
+                    type: 'list',
+                    message: 'Who is the manager of the new employee?',
+                    choices: employeeChoices
+                }
+            ]).then(({newFirstName, newLastName, newRole, newManager}) => {
+                let roleID;
+                let indexOfRole;
+                let managerId;
+                let indexOfManager;
+                //get the id of the desired department
+                function findID(){
+                    roleChoices.forEach(entry => {
+                        if(entry === newRole){
+                            indexOfRole = roleChoices.indexOf(entry);
+                            roleID = currentRoles[indexOfRole].value;
+                        }
+                    })
+                    employeeChoices.forEach(entry => {
+                        if(entry === newManager){
+                            indexOfManager = employeeChoices.indexOf(entry);
+                            managerId = currentEmployees[indexOfManager].value;
+                        }
+                    })
+                }
+                findID();
+
+                //insert into MySQL
+                connection.query(
+                    `insert into employee (first_name, last_name, role_id, manager_id)
+                    values (?, ?, ?, ?)`, [newFirstName, newLastName, roleID, managerId], (error, dataFinal) => {
+                    if(error)throw error;
+                    console.log(`${newFirstName} ${newLastName} has been added to roles`)
+                    menu();
                 })
-            }
-            findID();
-
-            //insert into MySQL
-            connection.query(
-                `insert into role (title, salary, department_id)
-                values (?, ?, ?)`, [newTitle, newSalary, departmentID], (error, dataFinal) => {
-                if(error)throw error;
-                console.log(`${newTitle} has been added to roles`)
-                menu();
             })
+
+
         })
+        
+
+        
     })
 }
 
