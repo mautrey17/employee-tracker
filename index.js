@@ -119,11 +119,81 @@ function viewRole() {
 }
 
 function addEmployee() {
+    //Get current departments
+    connection.query('select id, dept_name as deptName from department', (err, depts) => {
+        if (err) throw err;
 
+        //get departments from MySQL, put in array of objects to combine with id
+        const currentDepartments = depts.map(({id, deptName}) => ({
+            department: `${deptName}`,
+            value: id
+        }))
+        //put departments into in array to use in inquirer prompt
+        const departmentChoices = currentDepartments.map(({department}) => `${department}`)
+
+        //get necessary information for new role
+        inquirer.prompt([
+            {
+                name: 'newTitle',
+                type: 'input',
+                message: 'What is the new role called?',
+            },
+            {
+                name: 'newSalary',
+                type: 'input',
+                message: 'What is the new salary?',
+            },
+            {
+                name: 'newDept',
+                type: 'list',
+                message: 'What is the department for the new role?',
+                choices: departmentChoices
+            },
+        ]).then(({newTitle, newSalary, newDept}) => {
+            let departmentID;
+            let indexOfDept
+            //get the id of the desired department
+            function findID(){
+                departmentChoices.forEach(entry => {
+                    if(entry === newDept){
+                        indexOfDept = departmentChoices.indexOf(entry);
+                        departmentID = currentDepartments[indexOfDept].value;
+                    }
+                })
+            }
+            findID();
+
+            //insert into MySQL
+            connection.query(
+                `insert into role (title, salary, department_id)
+                values (?, ?, ?)`, [newTitle, newSalary, departmentID], (error, dataFinal) => {
+                if(error)throw error;
+                console.log(`${newTitle} has been added to roles`)
+                menu();
+            })
+        })
+    })
 }
 
 function addDepartment() {
+    //get necessary information for new role
+    inquirer.prompt([
+        {
+            name: 'newName',
+            type: 'input',
+            message: 'What is the new department called?',
+        }
+    ]).then(({newName}) => {
 
+        //insert into MySQL
+        connection.query(
+            `insert into department (dept_name)
+            value (?)`, [newName], (error, dataFinal) => {
+            if(error)throw error;
+            console.log(`${newName} has been added to departments`)
+            menu();
+        })
+    })
 }
 
 function addRole() {
