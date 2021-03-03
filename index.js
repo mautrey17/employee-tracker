@@ -11,6 +11,27 @@ const connection = mysql.createConnection({
   database: "employee_trackerdb",
 });
 
+//function to view all employees
+function viewAll() {
+    connection.query(
+        `select 
+            employee.first_name, 
+            employee.last_name,
+            employee.manager_id, 
+            role.title, 
+            role.salary, 
+            department.dept_name 
+        from employee 
+        inner join 
+            role on employee.role_id = role.id 
+        inner join 
+            department on role.department_id = department.id `, (error, dataFinal) => {
+        if(error)throw error;
+        console.table(dataFinal)
+        menu();
+    })
+}
+
 //function to view individual employee
 function viewEmployee() {
     connection.query('select id, first_name as firstName, last_name as lastName from employee', (err, employees) => {
@@ -18,7 +39,6 @@ function viewEmployee() {
         //get employees from MySQL, put in array to use in inquirer prompt
 
         const currentEmployees = employees.map(({firstName, lastName}) => `${firstName} ${lastName}`)
-        console.log(currentEmployees);
 
         inquirer.prompt({
             name: 'viewEmp',
@@ -34,6 +54,7 @@ function viewEmployee() {
                 `select 
                     employee.first_name, 
                     employee.last_name, 
+                    employee.manager_id,
                     role.title, 
                     role.salary, 
                     department.dept_name 
@@ -367,14 +388,89 @@ function updateEmployeeRoles(){
     })
 }
 
+function deleteEmployee() {
+
+        //Get current roles and other employees
+
+
+        // connection.query(
+        //     `select 
+        //         title as roleTitle, 
+        //         id as roleId 
+        //     from role`, (err, roles) => {
+        //     if (err) throw err;
+    
+        //     //get roles from MySQL, put in array of objects to combine with id
+        //     const currentRoles = roles.map(({roleTitle, roleId}) => ({
+        //         role: `${roleTitle}`,
+        //         value: roleId
+        //     }))
+        //     //put roles into in array to use in inquirer prompt
+        //     const roleChoices = currentRoles.map(({role}) => `${role}`)
+
+    
+            //get employee list information for manager
+            connection.query(`
+            select
+                first_name as firstName, 
+                last_name as lastName, 
+                id as empId
+            from employee`, (err2, emp) => {
+    
+                const currentEmployees = emp.map(({firstName, lastName, empId}) => ({
+                    name: `${firstName} ${lastName}`,
+                    value: empId
+                }))
+                const employeeChoices = currentEmployees.map(({name}) => `${name}`)
+    
+                //get necessary information for new role
+                inquirer.prompt([
+                    {
+                        name: 'deleteEmployee',
+                        type: 'list',
+                        message: 'Which employee would you like to delete?',
+                        choices: employeeChoices
+                    }
+                ]).then(({deleteEmployee}) => {
+                    let employeeId;
+                    let indexOfEmployee;
+                    //get the id of the desired department
+                    function findID(){
+                        employeeChoices.forEach(entry => {
+                            if(entry === deleteEmployee){
+                                indexOfEmployee = employeeChoices.indexOf(entry);
+                                employeeId = currentEmployees[indexOfEmployee].value;
+                            }
+                        })
+                    }
+                    findID();
+    
+                    //insert into MySQL
+                    connection.query(
+                        `delete from employee 
+                         where id = ?`, [employeeId], (error, dataFinal) => {
+                        if(error)throw error;
+                        console.log(`Employee has been deleted`)
+                        menu();
+                    })
+                })
+            })   
+        
+    
+}
+
+//Starter function that holds all options
 function menu() {
     inquirer.prompt({
         type: 'list',
         message: 'What would you like to do?',
-        choices: ['View an employee', 'View employees by department', 'View employees by role', 'Add an employee', 'Add a department', 'Add a role', "Update an employee's role", 'Quit'],
+        choices: ['View all employees', 'View an employee', 'View employees by department', 'View employees by role', 'Add an employee', 'Add a department', 'Add a role', "Update an employee's role", 'Delete an employee', 'Quit'],
         name: 'desiredAction'
     }).then(response => {
         switch (response.desiredAction){
+            case 'View all employees':
+                viewAll();
+                break;
             case 'View an employee':
                 viewEmployee();
                 break;
@@ -395,6 +491,9 @@ function menu() {
                 break;
             case "Update an employee's role":
                 updateEmployeeRoles();
+                break;
+            case 'Delete an employee':
+                deleteEmployee();
                 break;
             default:
                 console.log('Goodbye!');
