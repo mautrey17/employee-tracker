@@ -449,24 +449,8 @@ function updateEmployeeRoles() {
 }
 
 function deleteEmployee() {
-  //Get current roles and other employees
 
-  // connection.query(
-  //     `select
-  //         title as roleTitle,
-  //         id as roleId
-  //     from role`, (err, roles) => {
-  //     if (err) throw err;
-
-  //     //get roles from MySQL, put in array of objects to combine with id
-  //     const currentRoles = roles.map(({roleTitle, roleId}) => ({
-  //         role: `${roleTitle}`,
-  //         value: roleId
-  //     }))
-  //     //put roles into in array to use in inquirer prompt
-  //     const roleChoices = currentRoles.map(({role}) => `${role}`)
-
-  //get employee list information for manager
+  //get employee list information
   connection.query(
     `
             select
@@ -508,7 +492,7 @@ function deleteEmployee() {
           //insert into MySQL
           connection.query(
             `delete from employee 
-                         where id = ?`,
+            where id = ?`,
             [employeeId],
             (error, dataFinal) => {
               if (error) throw error;
@@ -520,6 +504,64 @@ function deleteEmployee() {
     }
   );
 }
+
+function deleteRole() {
+    //Get current roles
+    connection.query(
+      "select id, title as roleTitle from role",
+      (err, roles) => {
+        if (err) throw err;
+        
+        //get roles from MySQL, put in array of objects to combine with id
+        const currentRoles = roles.map(({ id, roleTitle }) => ({
+          role: `${roleTitle}`,
+          value: id,
+        }));
+        //put roles into in array to use in inquirer prompt
+        const roleChoices = currentRoles.map(
+          ({ role }) => `${role}`
+        );
+        console.log(currentRoles)
+        console.log(roleChoices)
+        //get necessary information for new role
+        inquirer
+          .prompt([
+            {
+              name: "delRole",
+              type: "list",
+              message: "What role would you like to delete?",
+              choices: roleChoices,
+            },
+          ])
+          .then(({ delRole }) => {
+            let roleID;
+            let indexOfRole;
+            //get the id of the desired department
+            function findID() {
+              roleChoices.forEach((entry) => {
+                if (entry === delRole) {
+                  indexOfRole = roleChoices.indexOf(entry);
+                  roleID = currentRoles[indexOfRole].value;
+                }
+              });
+            }
+            findID();
+  
+            //insert into MySQL
+            connection.query(
+              `delete from role
+              where id = ?`,
+              [roleID],
+              (error, dataFinal) => {
+                if (error) throw error;
+                console.log(`Role successfully deleted`);
+                menu();
+              }
+            );
+          });
+      }
+    );
+  }
 
 //Starter function that holds all options
 function menu() {
@@ -536,7 +578,8 @@ function menu() {
         "Add a department",
         "Add a role",
         "Update an employee's role",
-        "Delete an employee",
+        "Delete an employee",,
+        "Delete a role",
         "Quit",
       ],
       name: "desiredAction",
@@ -570,6 +613,9 @@ function menu() {
         case "Delete an employee":
           deleteEmployee();
           break;
+        case "Delete a role":
+            deleteRole();
+            break;
         default:
           console.log("Goodbye!");
           connection.end();
